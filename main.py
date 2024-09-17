@@ -26,9 +26,11 @@ class HandleRequest(BaseHTTPRequestHandler):
             with open(test_case_output_location, 'w') as f:
                 f.write(test_case['output'])
 
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
 
 PORT = 10045
 
-with socketserver.TCPServer(("", PORT), HandleRequest) as httpd:
+with ReusableTCPServer(("", PORT), HandleRequest) as httpd:
     print("It works")
-    httpd.serve_forever()
+    httpd.handle_request()
