@@ -4,6 +4,7 @@ import socketserver
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import subprocess
 
 class HandleRequest(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -34,3 +35,44 @@ PORT = 10045
 with ReusableTCPServer(("", PORT), HandleRequest) as httpd:
     print("It works")
     httpd.handle_request()
+
+def compile(sourceCode):
+    compile_command = ["g++", "-std=c++17", f"{sourceCode}.cpp", "-o", sourceCode]
+    result = subprocess.run(compile_command, capture_output=True)
+
+    if(result.stderr):
+        print(result.stderr.decode("utf-8"))
+
+def run(sourceCode):
+    compile(sourceCode)
+
+    test_cases_folder = os.listdir("testCases")
+    num_of_test_cases = len([file for file in test_cases_folder if os.path.isfile(os.path.join("./testCases", file))]) // 2
+
+    num_of_wrong_test_cases = 0
+
+    for i in range(1, num_of_test_cases + 1):
+        with open(f"testCases/{i}.in", "r") as infile:
+            main_process = subprocess.Popen(
+                [f"./{sourceCode}"], 
+                stdin=infile, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE
+            )
+
+            diff_process = subprocess.Popen(
+                ["diff", "-wB", "-", f"testCases/{i}.out"], 
+                stdin=main_process.stdout, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE
+            )
+
+            main_process.stdout.close()
+            diff_output, _ = diff_process.communicate()
+
+            if diff_output:
+                num_of_wrong_test_cases += 1
+    
+    print(f"Number of wrong test cases: {num_of_wrong_test_cases}")
+
+run("main")
